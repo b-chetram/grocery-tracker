@@ -1,0 +1,1369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Meal Plan">
+<title>Meal Planner</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,'Helvetica Neue',sans-serif;background:#0d0d0d;color:#fff;max-width:480px;margin:0 auto;min-height:100vh;padding-bottom:30px}
+button{cursor:pointer;font-family:inherit;border:none;outline:none}
+input,textarea{font-family:inherit;-webkit-appearance:none;outline:none}
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+.hidden{display:none!important}
+
+/* OVERLAYS */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:500;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:#161616;border-radius:24px 24px 0 0;width:100%;max-width:480px;border-top:1px solid #252525;max-height:88vh;display:flex;flex-direction:column}
+.sh-hdr{padding:18px 18px 12px;border-bottom:1px solid #1e1e1e;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.sh-title{font-size:18px;font-weight:800;color:#fff}
+.sh-close{background:#2a2a2a;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:14px;color:#aaa;flex-shrink:0}
+.sh-body{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 16px 16px;flex:1}
+.sh-foot{padding:10px 16px 14px;border-top:1px solid #1e1e1e;flex-shrink:0}
+
+/* TOPBAR */
+.topbar{background:#111;padding:14px 16px 0;border-bottom:1px solid #1e1e1e;position:sticky;top:0;z-index:100}
+.tb-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.app-title{font-size:22px;font-weight:900;letter-spacing:-.5px}
+.app-sub{font-size:10px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:2px}
+.week-chip{background:#1a2a1a;color:#5ec46a;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;margin-top:6px;display:inline-block}
+.mtabs{display:flex;background:#1a1a1a;border-radius:10px;padding:3px}
+.mtab{flex:1;padding:9px 0;font-size:12px;font-weight:700;background:none;color:#666;border-radius:8px;transition:all .15s}
+.mtab.on{background:#2a2a2a;color:#fff}
+
+/* CONTENT */
+.content{padding:14px 16px}
+.view{display:none}.view.on{display:block}
+
+/* SECTION HEADERS */
+.sec-hdr{font-size:13px;font-weight:800;color:#fff;margin-bottom:4px}
+.sec-sub{font-size:12px;color:#666;margin-bottom:12px;line-height:1.5}
+.sec-note{font-size:11px;color:#555;margin-bottom:12px;font-style:italic}
+
+/* WIZARD */
+.wizard-section{margin-bottom:22px}
+.wizard-title{font-size:18px;font-weight:900;letter-spacing:-.3px;margin-bottom:4px}
+.wizard-intro{font-size:13px;color:#777;margin-bottom:20px;line-height:1.6}
+
+/* TOGGLE CARDS (breakfast/snack/batch) */
+.tog-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}
+.tog-card{background:#141414;border:1px solid #1e1e1e;border-radius:12px;padding:12px;cursor:pointer;transition:all .15s;position:relative}
+.tog-card.on{border-color:#5ec46a;background:#0a1a0a}
+.tog-card.maxed:not(.on){opacity:.4;pointer-events:none}
+.tog-check{position:absolute;top:8px;right:8px;width:20px;height:20px;border-radius:6px;border:2px solid #2a2a2a;background:#0d0d0d;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.tog-card.on .tog-check{background:#5ec46a;border-color:#5ec46a}
+.tog-name{font-size:13px;font-weight:700;color:#ddd;margin-bottom:3px;padding-right:20px}
+.tog-cal{font-size:11px;color:#777}
+.tog-badge{display:inline-block;font-size:9px;font-weight:800;padding:2px 6px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px;margin-top:4px}
+.tb-batch{background:#1a1500;color:#e8a838}
+.tb-skin{background:#0a1a1f;color:#4dd0e1}
+
+/* BATCH TOGGLE CARDS — full width */
+.batch-list{display:flex;flex-direction:column;gap:8px;margin-bottom:6px}
+.batch-card{background:#141414;border:1px solid #1e1e1e;border-radius:12px;padding:14px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:12px}
+.batch-card.on{border-color:#e8a838;background:#120f00}
+.batch-card.maxed:not(.on){opacity:.4;pointer-events:none}
+.bc-icon{font-size:24px;flex-shrink:0}
+.bc-body{flex:1}
+.bc-name{font-size:14px;font-weight:700;color:#ddd;margin-bottom:3px}
+.bc-meta{font-size:11px;color:#777}
+.bc-feeds{font-size:11px;font-weight:800;color:#e8a838;margin-top:4px}
+.bc-check{width:24px;height:24px;border-radius:7px;border:2px solid #2a2a2a;background:#0d0d0d;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+.batch-card.on .bc-check{background:#e8a838;border-color:#e8a838}
+
+/* FRESH MEALS COUNTER CARDS */
+.fresh-list{display:flex;flex-direction:column;gap:8px;margin-bottom:6px}
+.fresh-card{background:#141414;border:1px solid #1e1e1e;border-radius:12px;padding:14px;display:flex;align-items:center;gap:12px;transition:border-color .15s}
+.fresh-card.has-count{border-color:#5ec46a40}
+.fc-body{flex:1}
+.fc-name{font-size:14px;font-weight:700;color:#ddd;margin-bottom:3px}
+.fc-meta{font-size:11px;color:#777}
+.fc-counter{display:flex;align-items:center;gap:12px;flex-shrink:0}
+.cnt-btn{width:32px;height:32px;border-radius:50%;background:#2a2a2a;color:#fff;font-size:20px;line-height:1;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.cnt-btn:active{transform:scale(.92)}
+.cnt-btn.disabled{opacity:.3;pointer-events:none}
+.cnt-val{font-size:18px;font-weight:900;min-width:24px;text-align:center;color:#fff}
+.cnt-val.nonzero{color:#5ec46a}
+
+/* SLOT METER */
+.slot-meter{background:#161616;border-radius:14px;padding:14px;margin-bottom:20px;border:1px solid #1e1e1e;position:sticky;top:110px;z-index:50}
+.sm-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.sm-label{font-size:13px;font-weight:700}
+.sm-count{font-size:18px;font-weight:900;color:#5ec46a}
+.sm-bar{height:8px;background:#1a1a1a;border-radius:4px;overflow:hidden}
+.sm-fill{height:100%;border-radius:4px;background:#5ec46a;transition:width .3s}
+.sm-fill.full{background:#e8a838}
+.sm-note{font-size:11px;color:#666;margin-top:6px}
+
+/* GENERATE BUTTON */
+.gen-section{padding-top:8px}
+.gen-btn{width:100%;background:#5ec46a;color:#000;border-radius:14px;padding:16px;font-size:17px;font-weight:800;transition:all .2s}
+.gen-btn:disabled{background:#1e1e1e;color:#444}
+.gen-sub{font-size:12px;color:#666;text-align:center;margin-top:8px}
+
+/* WEEK VIEW */
+.wv-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.wv-title{font-size:18px;font-weight:900}
+.replan-btn{background:none;border:1px solid #2a2a2a;color:#777;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700}
+
+.day-card{border-radius:16px;background:#141414;border:1px solid #1e1e1e;margin-bottom:12px;overflow:hidden}
+.day-card.is-today{border-color:#5ec46a50;background:#080f08}
+.day-card.is-past{opacity:.6}
+.day-card.is-weekend{background:#0e0e0e}
+.day-hdr{padding:12px 14px 0;display:flex;justify-content:space-between;align-items:center}
+.day-name{font-size:16px;font-weight:800}
+.day-pills{display:flex;gap:6px;align-items:center}
+.pill-today{background:#5ec46a;color:#000;font-size:9px;font-weight:900;padding:3px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px}
+.pill-date{font-size:11px;color:#666}
+.cook-banner{margin:8px 14px 0;background:#1a1200;border:1px solid #e8a83840;border-radius:10px;padding:9px 12px;display:flex;align-items:flex-start;gap:8px}
+.cook-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.cook-text{font-size:12px;color:#e8a838;font-weight:700;line-height:1.4}
+.cook-sub{font-size:11px;color:#7a6020;margin-top:2px}
+.day-slots{padding:8px 8px 12px}
+.dslot{display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:10px;cursor:pointer;transition:background .15s}
+.dslot:active{background:#1a1a1a}
+.ds-type{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#555;width:72px;flex-shrink:0}
+.ds-meal{flex:1;font-size:13px;color:#777}
+.ds-meal.has-meal{color:#ddd;font-weight:600}
+.ds-meal.leftover{color:#aaa;font-style:italic}
+.ds-meal.empty{color:#444;font-style:italic}
+.ds-meal.flexible{color:#555;font-style:italic}
+.ds-badge{font-size:9px;padding:2px 6px;border-radius:4px;font-weight:800;flex-shrink:0;white-space:nowrap}
+.dsb-leftover{background:#1a1500;color:#8a7030}
+.dsb-skin{background:#0a1a1f;color:#4dd0e1}
+
+/* TODAY TAB */
+.today-hdr{margin-bottom:14px}
+.today-day{font-size:26px;font-weight:900;letter-spacing:-.5px}
+.today-sub{font-size:13px;color:#666;margin-top:2px}
+.cal-card{background:#161616;border-radius:14px;padding:14px;margin-bottom:14px;border:1px solid #1e1e1e}
+.cc-top{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:10px}
+.cc-num{font-size:26px;font-weight:900;letter-spacing:-.5px}
+.cc-goal{font-size:12px;color:#555;font-weight:600}
+.cc-pct{font-size:15px;font-weight:800}
+.prog{height:8px;background:#1a1a1a;border-radius:4px;overflow:hidden;margin-bottom:8px}
+.prog-fill{height:100%;border-radius:4px;transition:width .4s;background:#5ec46a}
+.prog-fill.over{background:#e8a838}
+.cc-pro{font-size:12px;color:#777}
+.cc-pro span{color:#5ec46a;font-weight:700}
+.cc-over-note{font-size:11px;color:#e8a838;margin-top:5px}
+
+.tmeal{border-radius:12px;padding:12px 14px;margin-bottom:8px;border:1px solid #1e1e1e;background:#141414;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all .15s}
+.tmeal.logged{background:#070f07;border-color:#5ec46a40}
+.tmeal.no-meal{cursor:default;background:#0d0d0d;border-style:dashed;border-color:#252525}
+.tm-box{width:26px;height:26px;border-radius:8px;border:2px solid #2a2a2a;background:#0d0d0d;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+.tm-box.done{background:#5ec46a;border-color:#5ec46a}
+.tm-body{flex:1;min-width:0}
+.tm-type{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#555;margin-bottom:2px}
+.tm-name{font-size:13px;font-weight:700;color:#ddd;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tm-name.empty{color:#444;font-weight:400;font-style:italic}
+.tm-cal{font-size:11px;color:#666;margin-top:2px}
+.tm-cal.logged{color:#5ec46a}
+
+.sec-label{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:#555;margin-bottom:8px;margin-top:4px}
+.citem{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#141414;border-radius:10px;margin-bottom:6px;border:1px solid #1e1e1e}
+.ci-name{flex:1;font-size:13px;color:#ccc;font-weight:600}
+.ci-cal{font-size:12px;color:#777}
+.ci-del{background:none;color:#555;font-size:20px;padding:0 4px;line-height:1}
+.add-btn{width:100%;background:none;border:1px dashed #252525;color:#5ec46a;border-radius:10px;padding:12px;font-size:13px;font-weight:700;margin-top:4px}
+.save-banner{background:#0a1818;border:1px solid #4dd0e140;border-radius:12px;padding:12px 14px;margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.sb-text{font-size:13px;color:#ccc;flex:1;min-width:0;line-height:1.4}
+.sb-yes{background:#4dd0e1;color:#000;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:800;flex-shrink:0}
+.sb-no{background:none;color:#555;font-size:12px;padding:8px;flex-shrink:0}
+
+.complete-card{background:#0a1a0a;border:1px solid #5ec46a50;border-radius:14px;padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:12px}
+.cc-icon{font-size:28px;flex-shrink:0}
+.cc-msg{font-size:14px;font-weight:800;color:#5ec46a}
+.cc-sub{font-size:12px;color:#3a7a3a;margin-top:3px}
+
+/* GROCERY */
+.groc-top{background:#161616;border-radius:14px;padding:14px;margin-bottom:14px;border:1px solid #1e1e1e;display:flex;justify-content:space-between;align-items:center}
+.gt-title{font-size:14px;font-weight:700}
+.gt-sub{font-size:11px;color:#666;margin-top:3px}
+.copy-btn{background:#1e1e1e;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;color:#aaa;border:1px solid #252525;flex-shrink:0}
+.cat-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:#666;margin-bottom:8px;padding-left:2px}
+.gitem{display:flex;align-items:center;gap:12px;padding:11px 14px;background:#141414;border-radius:10px;margin-bottom:6px;border:1px solid #1e1e1e;transition:opacity .2s}
+.gitem.checked{opacity:.4}
+.g-box{width:24px;height:24px;border-radius:7px;border:2px solid #2a2a2a;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;transition:all .15s;background:#0d0d0d}
+.g-box.done{background:#5ec46a;border-color:#5ec46a}
+.g-name{flex:1;font-size:13px;font-weight:600;color:#ddd}
+.g-qty{font-size:12px;color:#666;font-weight:700;white-space:nowrap}
+.g-staple{font-size:11px;color:#e8a838;font-style:italic}
+.groc-empty{text-align:center;padding:50px 20px;color:#555;font-size:14px;line-height:1.8}
+
+/* PICKER */
+.meal-opt{background:#0d0d0d;border-radius:12px;padding:14px;margin-bottom:8px;border:1px solid #1e1e1e;cursor:pointer;transition:border-color .15s}
+.meal-opt.selected{border-color:#5ec46a;background:#060f06}
+.mo-name{font-size:15px;font-weight:700;margin-bottom:5px;color:#fff}
+.mo-macros{display:flex;gap:12px;margin-bottom:5px}
+.mo-m{font-size:11px;color:#777}
+.mo-note{font-size:12px;color:#666;line-height:1.4}
+.picker-div{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#555;padding:8px 0 6px;border-top:1px solid #1e1e1e;margin-top:4px}
+.tag{display:inline-block;font-size:9px;font-weight:800;padding:2px 7px;border-radius:20px;letter-spacing:.5px;text-transform:uppercase;margin-right:4px;margin-bottom:6px}
+.tag-batch{background:#1a1500;color:#e8a838}
+.tag-skin{background:#0a1a1f;color:#4dd0e1}
+.tag-custom{background:#1a0d2a;color:#bb86fc}
+
+/* FORMS */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:11px;font-weight:800;color:#777;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.field input{width:100%;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;color:#fff;padding:14px;font-size:16px;transition:border-color .2s}
+.field input:focus{border-color:#5ec46a}
+.field input.err{border-color:#e83838}
+.field-row{display:flex;gap:10px}
+.field-row .field{flex:1}
+.confirm-btn{width:100%;background:#5ec46a;color:#000;border-radius:12px;padding:15px;font-size:16px;font-weight:800}
+.cancel-btn{width:100%;background:none;color:#666;padding:10px;font-size:14px;margin-top:4px}
+
+/* LIBRARY SAVE */
+.type-row{display:flex;gap:6px;margin-bottom:6px}
+.type-btn{flex:1;padding:9px;border-radius:9px;border:1px solid #2a2a2a;background:#1a1a1a;color:#777;font-size:12px;font-weight:700;text-align:center}
+.type-btn.on{background:#5ec46a;color:#000;border-color:#5ec46a}
+.serv-row{display:flex;gap:6px;margin-bottom:6px}
+.serv-btn{flex:1;padding:9px;border-radius:9px;border:1px solid #2a2a2a;background:#1a1a1a;color:#777;font-size:12px;font-weight:700;text-align:center}
+.serv-btn.on{background:#1e2a1e;color:#5ec46a;border-color:#5ec46a}
+.ing-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.ing-chip{padding:6px 12px;border-radius:20px;border:1px solid #2a2a2a;background:#1a1a1a;color:#777;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+.ing-chip.on{background:#1a2a1a;border-color:#5ec46a;color:#5ec46a}
+.free-input{width:100%;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;color:#fff;padding:12px;font-size:14px;margin-top:10px}
+.free-hint{font-size:11px;color:#555;margin-top:5px}
+</style>
+</head>
+<body>
+
+<!-- MEAL PICKER (for overriding slots) -->
+<div class="overlay hidden" id="picker-ov" onclick="ovBg(event,'picker-ov')">
+  <div class="sheet">
+    <div class="sh-hdr">
+      <div class="sh-title" id="picker-title">Choose meal</div>
+      <button class="sh-close" onclick="closePicker()">✕</button>
+    </div>
+    <div class="sh-body" id="picker-body"></div>
+    <div class="sh-foot" id="picker-foot"></div>
+  </div>
+</div>
+
+<!-- ADD CUSTOM ITEM -->
+<div class="overlay hidden" id="additem-ov" onclick="ovBg(event,'additem-ov')">
+  <div class="sheet">
+    <div class="sh-hdr">
+      <div class="sh-title">Add item</div>
+      <button class="sh-close" onclick="closeAddItem()">✕</button>
+    </div>
+    <div class="sh-body">
+      <div class="field">
+        <label>What did you have?</label>
+        <input type="text" id="ci-name" placeholder="e.g. Extra roti, protein shake…">
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Calories</label><input type="number" id="ci-cal" placeholder="0" min="0"></div>
+        <div class="field"><label>Protein (g)</label><input type="number" id="ci-pro" placeholder="optional" min="0"></div>
+      </div>
+    </div>
+    <div class="sh-foot">
+      <button class="confirm-btn" onclick="logCustomItem()">Log it →</button>
+      <button class="cancel-btn" onclick="closeAddItem()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- SAVE TO LIBRARY -->
+<div class="overlay hidden" id="savelib-ov" onclick="ovBg(event,'savelib-ov')">
+  <div class="sheet">
+    <div class="sh-hdr">
+      <div class="sh-title">Save to library</div>
+      <button class="sh-close" onclick="closeSaveLib()">✕</button>
+    </div>
+    <div class="sh-body">
+      <div id="lib-preview" style="background:#0d0d0d;border-radius:10px;padding:12px;margin-bottom:16px;border:1px solid #1e1e1e"></div>
+      <div class="field"><label>Meal type</label><div class="type-row" id="lib-type-row"></div></div>
+      <div class="field"><label>How many servings does it make?</label><div class="serv-row" id="lib-serv-row"></div></div>
+      <div class="field">
+        <label>Trader Joe's ingredients (tap to add)</label>
+        <div class="ing-chips" id="lib-chips"></div>
+        <input class="free-input" type="text" id="lib-free" placeholder="Other ingredients (curry powder, hot sauce…)">
+        <div class="free-hint">Comma-separated. Appears on your grocery list.</div>
+      </div>
+    </div>
+    <div class="sh-foot">
+      <button class="confirm-btn" onclick="saveToLibrary()" style="background:#4dd0e1;color:#000">Save to library →</button>
+      <button class="cancel-btn" onclick="closeSaveLib()">Skip</button>
+    </div>
+  </div>
+</div>
+
+<!-- NEW WEEK MODAL -->
+<div class="overlay hidden" id="nwmodal" onclick="ovBg(event,'nwmodal',keepExisting)">
+  <div class="sheet">
+    <div class="sh-hdr"><div class="sh-title">New week 🗓️</div></div>
+    <div class="sh-body">
+      <p style="font-size:14px;color:#888;line-height:1.7;margin-bottom:18px">It's a new week. Start fresh to plan your meals and build a new grocery list, or keep your existing plan.</p>
+      <button class="confirm-btn" onclick="startFreshWeek()" style="margin-bottom:10px">Plan fresh week →</button>
+      <button style="width:100%;background:none;border:1px solid #2a2a2a;color:#666;border-radius:12px;padding:14px;font-size:14px;font-weight:700" onclick="keepExisting()">Keep existing plan</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="topbar">
+  <div class="tb-row">
+    <div>
+      <div class="app-sub">Weekly</div>
+      <div class="app-title">Meal Planner</div>
+      <div class="week-chip" id="week-chip"></div>
+    </div>
+  </div>
+  <div class="mtabs">
+    <button class="mtab on" id="mt-plan"    onclick="showTab('plan')">📅 Plan</button>
+    <button class="mtab"    id="mt-today"   onclick="showTab('today')">🍽️ Today</button>
+    <button class="mtab"    id="mt-grocery" onclick="showTab('grocery')">🛒 Grocery</button>
+  </div>
+  <div style="height:1px;background:#1e1e1e;margin-top:0"></div>
+</div>
+
+<div class="content">
+  <div class="view on" id="view-plan"><div id="plan-content"></div></div>
+  <div class="view"    id="view-today"><div id="today-content"></div></div>
+  <div class="view"    id="view-grocery"><div id="grocery-content"></div></div>
+</div>
+
+<script>
+/* ── INGREDIENT MASTER LIST ──────────────────────────────────── */
+const ING={
+  chicken_thighs:{name:"Chicken Thighs",          cat:"proteins",  spu:4, ul:"pack (~2 lbs)"},
+  ground_beef:   {name:"Ground Beef 85/15",        cat:"proteins",  spu:3, ul:"lb"},
+  ground_turkey: {name:"Ground Turkey",            cat:"proteins",  spu:3, ul:"lb"},
+  frozen_salmon: {name:"Frozen Atlantic Salmon",   cat:"proteins",  spu:4, ul:"bag"},
+  chx_sausage:   {name:"Chicken Sausage",          cat:"proteins",  spu:2, ul:"pack"},
+  steak:         {name:"Sirloin Steak",            cat:"proteins",  spu:1, ul:"steak"},
+  chx_breast:    {name:"Chicken Breast",           cat:"proteins",  spu:4, ul:"pack (~2 lbs)"},
+  eggs:          {name:"Cage Free Eggs",           cat:"proteins",  spu:4, ul:"carton (12)"},
+  mandarin_chx:  {name:"Mandarin Orange Chicken",  cat:"frozen",    spu:2, ul:"bag"},
+  frozen_rice:   {name:"Frozen Jasmine Rice Pkts", cat:"frozen",    spu:4, ul:"4-pack"},
+  frozen_broc:   {name:"Frozen Broccoli Florets",  cat:"frozen",    spu:3, ul:"bag"},
+  frozen_potpep: {name:"Frozen Potatoes & Peppers",cat:"frozen",    spu:4, ul:"bag"},
+  frozen_peppers:{name:"Frozen Pepper Mix",        cat:"frozen",    spu:5, ul:"bag"},
+  frozen_gb:     {name:"Frozen Green Beans",       cat:"frozen",    spu:3, ul:"bag"},
+  frozen_berries:{name:"Frozen Mixed Berries",     cat:"frozen",    spu:5, ul:"bag"},
+  frozen_shrimp: {name:"Frozen Cooked Shrimp",     cat:"proteins",  spu:3, ul:"bag"},
+  edamame:       {name:"Frozen Shelled Edamame",   cat:"frozen",    spu:4, ul:"bag"},
+  string_cheese: {name:"Mozzarella String Cheese", cat:"dairy",     spu:6, ul:"pack"},
+  mixed_nuts:    {name:"Mixed Nuts (unsalted)",     cat:"pantry",    spu:8, ul:"bag", staple:true},
+  bananas:       {name:"Bananas",                  cat:"produce",   spu:6, ul:"bunch"},
+  spinach:       {name:"Baby Spinach",             cat:"produce",   spu:10,ul:"bag"},
+  apples:        {name:"Honeycrisp Apples",        cat:"produce",   spu:6, ul:"bag"},
+  sweet_potato:  {name:"Sweet Potatoes",           cat:"produce",   spu:4, ul:"bag"},
+  greek_yogurt:  {name:"Greek Yogurt Plain 0%",    cat:"dairy",     spu:6, ul:"container (32oz)"},
+  soy_milk:      {name:"Organic Soy Milk",         cat:"dairy",     spu:7, ul:"carton (half gal)"},
+  pb:            {name:"Organic Peanut Butter",    cat:"pantry",    spu:20,ul:"jar",      staple:true},
+  oats:          {name:"Rolled Oats",              cat:"pantry",    spu:25,ul:"canister", staple:true},
+  pasta:         {name:"Penne Pasta",              cat:"pantry",    spu:6, ul:"box"},
+  marinara:      {name:"Organic Marinara Sauce",   cat:"pantry",    spu:5, ul:"jar"},
+  granola:       {name:"Granola",                  cat:"pantry",    spu:8, ul:"bag"},
+  bread:         {name:"Whole Wheat Bread",        cat:"pantry",    spu:7, ul:"loaf"},
+  rice_cakes:    {name:"Lightly Salted Rice Cakes",cat:"pantry",    spu:4, ul:"bag"},
+  protein_bars:  {name:"Protein Bars",             cat:"pantry",    spu:1, ul:"bar"},
+  protein_powder:{name:"Protein Powder",           cat:"supplements",spu:30,ul:"check stock",staple:true},
+  collagen:      {name:"Collagen Powder",          cat:"supplements",spu:30,ul:"check stock",staple:true},
+};
+const QUICK_ING_IDS=Object.keys(ING).filter(id=>!['protein_powder','collagen'].includes(id));
+
+/* ── MEAL DEFINITIONS ────────────────────────────────────────── */
+// Breakfasts: repeat daily
+const BREAKFASTS=[
+  {id:'bf_smoothie', name:'Morning Smoothie',         cal:650,pro:40,
+   ings:[{id:'protein_powder',s:1},{id:'greek_yogurt',s:1},{id:'frozen_berries',s:1},{id:'spinach',s:1},{id:'oats',s:1},{id:'pb',s:1},{id:'soy_milk',s:2},{id:'collagen',s:1}]},
+  {id:'bf_oats',     name:'Overnight Oats',            cal:500,pro:30,
+   ings:[{id:'oats',s:2},{id:'protein_powder',s:1},{id:'greek_yogurt',s:1},{id:'frozen_berries',s:1},{id:'pb',s:1},{id:'soy_milk',s:1}]},
+  {id:'bf_combo',    name:'Smoothie + Oats Combo',     cal:1100,pro:55,
+   ings:[{id:'protein_powder',s:2},{id:'greek_yogurt',s:2},{id:'frozen_berries',s:1},{id:'spinach',s:1},{id:'oats',s:2},{id:'pb',s:2},{id:'soy_milk',s:2},{id:'collagen',s:1}]},
+];
+// Snacks: repeat daily
+const SNACKS=[
+  {id:'sk_yogurt',  name:'Greek Yogurt + Granola + Banana',cal:380,pro:20,ings:[{id:'greek_yogurt',s:2},{id:'granola',s:1},{id:'bananas',s:1}]},
+  {id:'sk_pbtoast', name:'PB Toast + Banana',              cal:380,pro:12,ings:[{id:'bread',s:1},{id:'pb',s:1},{id:'bananas',s:1}]},
+  {id:'sk_bar',     name:'Protein Bar + Apple',            cal:320,pro:20,ings:[{id:'protein_bars',s:1},{id:'apples',s:1}]},
+  {id:'sk_ricecake',name:'Rice Cakes + PB',                cal:300,pro:8, ings:[{id:'rice_cakes',s:1},{id:'pb',s:1}]},
+  {id:'sk_edamame', name:'Edamame (frozen, microwave 3 min)',cal:180,pro:17,ings:[{id:'edamame',s:1}]},
+  {id:'sk_stringch',name:'String Cheese + Apple',          cal:200,pro:14,ings:[{id:'string_cheese',s:1},{id:'apples',s:1}]},
+  {id:'sk_nuts',    name:'Mixed Nuts',                     cal:280,pro:8, ings:[{id:'mixed_nuts',s:1}]},
+];
+// Batch meals: cook once, eat multiple times
+const BATCH_MEALS=[
+  {id:'bt_chicken',name:'Batch Chicken Thighs + Rice + Veg',    cal:650,pro:45,servings:4,batch:true,
+   note:'Cook Monday night. Feeds 4 meals — Monday dinner + Tuesday and Wednesday lunches.',
+   ings:[{id:'chicken_thighs',s:1},{id:'frozen_rice',s:1},{id:'frozen_broc',s:1}]},
+  {id:'bt_beef',   name:'Batch Ground Beef + Peppers + Pasta',  cal:700,pro:45,servings:3,batch:true,
+   note:'Cook Wednesday night. Feeds 3 meals — Wednesday dinner + Thursday and Friday lunches.',
+   ings:[{id:'ground_beef',s:1},{id:'pasta',s:1},{id:'marinara',s:1},{id:'frozen_peppers',s:1}]},
+  {id:'bt_turkey', name:'Batch Ground Turkey + Rice + Green Beans',cal:600,pro:45,servings:3,batch:true,
+   note:'Leaner batch option. Feeds 3 meals. Good alternative to beef batch.',
+   ings:[{id:'ground_turkey',s:1},{id:'frozen_rice',s:1},{id:'frozen_gb',s:1}]},
+  {id:'bt_sausage',name:'Batch Sausage + Peppers + Pasta',         cal:720,pro:38,servings:3,batch:true,
+   note:'Slice one pack of sausage, cook with frozen peppers and pasta. Feeds 3 meals. Tastes great reheated.',
+   ings:[{id:'chx_sausage',s:1},{id:'frozen_peppers',s:1},{id:'pasta',s:1},{id:'marinara',s:1}]},
+];
+// Fresh meals: one or two servings per cook
+const FRESH_MEALS=[
+  {id:'fr_salmon',  name:'Blackened Salmon + Rice + Broccoli',  cal:650,pro:45,servings:1,tags:['skin'],
+   note:'Best for skin — aim for twice a week.',
+   ings:[{id:'frozen_salmon',s:1},{id:'frozen_rice',s:1},{id:'frozen_broc',s:1}]},
+  {id:'fr_steak',   name:'Steak + Frozen Potatoes + Peppers',   cal:750,pro:50,servings:1,
+   note:'Season simple. Sear hard. One serving.',
+   ings:[{id:'steak',s:1},{id:'frozen_potpep',s:1}]},
+  {id:'fr_sausage', name:'Sausage + Peppers + Pasta',           cal:750,pro:35,servings:2,
+   note:'Lower protein — consider adding a protein shake this day. Makes 2 servings.',
+   ings:[{id:'chx_sausage',s:1},{id:'frozen_peppers',s:1},{id:'pasta',s:1},{id:'marinara',s:1}]},
+  {id:'fr_turkey',  name:'Ground Turkey + Rice + Green Beans',  cal:600,pro:45,servings:2,
+   note:'Lean and quick. Makes 2 servings.',
+   ings:[{id:'ground_turkey',s:1},{id:'frozen_rice',s:1},{id:'frozen_gb',s:1}]},
+  {id:'fr_chxsweet',name:'Chicken + Sweet Potato + Green Beans',cal:650,pro:45,servings:2,
+   note:'Sweet potato beats white rice for muscle building. Makes 2 servings.',
+   ings:[{id:'chx_breast',s:1},{id:'sweet_potato',s:1},{id:'frozen_gb',s:1}]},
+  {id:'fr_beefpasta',name:'Ground Beef + Pasta + Marinara',     cal:700,pro:45,servings:2,
+   note:'Make extra and take for lunch tomorrow. Makes 2 servings.',
+   ings:[{id:'ground_beef',s:1},{id:'pasta',s:1},{id:'marinara',s:1}]},
+  {id:'fr_mandarin',name:'Mandarin Orange Chicken + Rice',       cal:650,pro:35,servings:2,
+   note:"TJ's easiest meal. Great for Monday lunch when batch isn't ready. Makes 2 servings.",
+   ings:[{id:'mandarin_chx',s:1},{id:'frozen_rice',s:1}]},
+  {id:'fr_shrimp',  name:'Shrimp + Rice + Frozen Veg',          cal:550,pro:42,servings:2,
+   note:"TJ's frozen cooked shrimp — just heat through in 5 min. Pair with frozen rice and veg. Makes 2 servings.",
+   tags:['skin'],
+   ings:[{id:'frozen_shrimp',s:1},{id:'frozen_rice',s:2},{id:'frozen_broc',s:1}]},
+];
+
+const TOTAL_MAIN_SLOTS=14; // 7 lunches + 7 dinners
+const CAL_GOAL=2800, PRO_GOAL=165;
+const DAYS=['mon','tue','wed','thu','fri','sat','sun'];
+const DLBL={mon:'Mon',tue:'Tue',wed:'Wed',thu:'Thu',fri:'Fri',sat:'Sat',sun:'Sun'};
+const DLONG={mon:'Monday',tue:'Tuesday',wed:'Wednesday',thu:'Thursday',fri:'Friday',sat:'Saturday',sun:'Sunday'};
+const SLOTS=['breakfast','lunch','snack','dinner'];
+const KEY='meal_planner_v1';
+
+/* ── STATE ───────────────────────────────────────────────────── */
+// wizard selections
+let SEL={breakfasts:new Set(),snacks:new Set(),batches:new Set(),fresh:{}};
+// generated plan
+let PLAN={weekOf:null,slots:{},generated:false};
+// tracking
+let TRACK={logged:{},custom:{}};
+// user's saved custom meal library
+let LIBRARY=[];
+// grocery checklist
+let CHECKED={};
+// transient UI state (not persisted)
+let UI={tab:'plan',picking:null,libType:'dinner',libServings:1,libChips:new Set(),pendingSave:null};
+
+/* ── ALL MEALS LOOKUP ─────────────────────────────────────────── */
+function allMeals(){return[...BREAKFASTS,...SNACKS,...BATCH_MEALS,...FRESH_MEALS,...LIBRARY];}
+function findMeal(id){
+  if(!id)return null;
+  return allMeals().find(m=>m.id===id)||null;
+}
+function getMealServings(id){const m=findMeal(id);return m?m.servings||1:1;}
+function isBatchMeal(id){const m=findMeal(id);return!!(m&&m.batch);}
+function isLibMeal(id){return LIBRARY.some(m=>m.id===id);}
+function makeTags(tags){
+  if(!tags||!tags.length)return'';
+  return tags.map(t=>
+    t==='batch'? `<span class="tag tag-batch">Batch cook</span>`:
+    t==='skin'?  `<span class="tag tag-skin">Skin health</span>`:
+    t==='custom'?`<span class="tag tag-custom">My library</span>`:''
+  ).join('');
+}
+
+/* ── WEEK HELPERS ─────────────────────────────────────────────── */
+function getMondayStr(){
+  const now=new Date(),day=now.getDay(),diff=day===0?-6:1-day;
+  const mon=new Date(now);mon.setDate(now.getDate()+diff);mon.setHours(0,0,0,0);
+  return mon.toDateString();
+}
+function getWeekDates(){
+  const mon=new Date(getMondayStr());
+  return DAYS.map((_,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});});
+}
+function getTodayKey(){return['sun','mon','tue','wed','thu','fri','sat'][new Date().getDay()];}
+function isPastDay(key){const ti=DAYS.indexOf(getTodayKey()),ki=DAYS.indexOf(key);return ki>=0&&ti>=0&&ki<ti;}
+function isWeekendDay(key){return key==='sat'||key==='sun';}
+
+/* ── STORAGE ─────────────────────────────────────────────────── */
+function load(){
+  try{
+    const r=JSON.parse(localStorage.getItem(KEY));
+    if(!r)return;
+    if(r.PLAN)PLAN=Object.assign({weekOf:null,slots:{},generated:false},r.PLAN);
+    if(r.TRACK)TRACK=Object.assign({logged:{},custom:{}},r.TRACK);
+    if(r.LIBRARY)LIBRARY=r.LIBRARY;
+    if(r.CHECKED)CHECKED=r.CHECKED;
+    if(r.SEL){
+      // Restore wizard selections (as arrays, re-convert to Sets/objects)
+      SEL.breakfasts=new Set(r.SEL.breakfasts||[]);
+      SEL.snacks=new Set(r.SEL.snacks||[]);
+      SEL.batches=new Set(r.SEL.batches||[]);
+      SEL.fresh=r.SEL.fresh||{};
+    }
+    if(r.UI)UI.tab=r.UI.tab||'plan';
+  }catch(e){}
+}
+function save(){
+  // Serialize Sets for storage
+  const selSer={
+    breakfasts:[...SEL.breakfasts],
+    snacks:[...SEL.snacks],
+    batches:[...SEL.batches],
+    fresh:SEL.fresh,
+  };
+  try{
+    localStorage.setItem(KEY,JSON.stringify({PLAN,TRACK,LIBRARY,CHECKED,SEL:selSer,UI:{tab:UI.tab}}));
+  }catch(e){}
+}
+
+/* ── TRACKING HELPERS ─────────────────────────────────────────── */
+function lk(d,s){return`${d}-${s}`;}
+function isLogged(d,s){return!!TRACK.logged[lk(d,s)];}
+function getCustomItems(day){return TRACK.custom[day]||[];}
+function consumedCal(day){
+  let c=0;
+  SLOTS.forEach(s=>{if(!isLogged(day,s))return;const m=findMeal(PLAN.slots[lk(day,s)]);if(m)c+=m.cal;});
+  getCustomItems(day).forEach(ci=>c+=ci.cal);
+  return c;
+}
+function consumedPro(day){
+  let p=0;
+  SLOTS.forEach(s=>{if(!isLogged(day,s))return;const m=findMeal(PLAN.slots[lk(day,s)]);if(m)p+=m.pro||0;});
+  getCustomItems(day).forEach(ci=>p+=(ci.pro||0));
+  return p;
+}
+function plannedCal(day){
+  let c=0;SLOTS.forEach(s=>{const m=findMeal(PLAN.slots[lk(day,s)]);if(m)c+=m.cal;});return c;
+}
+
+/* ── WIZARD SLOT COUNTER ─────────────────────────────────────── */
+function batchSlotCount(){
+  let c=0;
+  SEL.batches.forEach(id=>{const m=findMeal(id);if(m)c+=m.servings||1;});
+  // Library batch meals
+  Object.entries(SEL.fresh).forEach(([id,cnt])=>{
+    if(isLibMeal(id)){const m=findMeal(id);if(m&&m.batch)c+=(m.servings||1)*cnt;}
+  });
+  return c;
+}
+function freshSlotCount(){
+  let c=0;
+  Object.entries(SEL.fresh).forEach(([id,cnt])=>{
+    if(!isBatchMeal(id)){const m=findMeal(id);if(m)c+=(m.servings||1)*cnt;}
+  });
+  return c;
+}
+function totalMainSlots(){return batchSlotCount()+freshSlotCount();}
+function remainingSlots(){return TOTAL_MAIN_SLOTS-totalMainSlots();}
+
+/* ── AUTO-POPULATE ALGORITHM ─────────────────────────────────── */
+// This is the core intelligence: given wizard selections, fills 28 slots across 7 days.
+// Batch meals → Mon cook night + subsequent lunches; Wed cook + subsequent lunches.
+// Fresh meals → remaining dinner slots first, then lunch slots.
+// Weekends → flexible/empty by default.
+function generateWeek(){
+  const slots={};
+
+  // BREAKFASTS: rotate selected options across all 7 days
+  const bfs=[...SEL.breakfasts];
+  if(bfs.length>0){
+    DAYS.forEach((day,i)=>slots[lk(day,'breakfast')]=bfs[i%bfs.length]);
+  }
+
+  // SNACKS: rotate selected options
+  const sks=[...SEL.snacks];
+  if(sks.length>0){
+    DAYS.forEach((day,i)=>slots[lk(day,'snack')]=sks[i%sks.length]);
+  }
+
+  // BATCH MEALS — up to 2 batch cooks per week
+  // First batch: Mon dinner (cook night) + Tue lunch + Wed lunch + (Thu lunch if 4 servings)
+  // Second batch: Wed dinner (cook night) + Thu lunch + Fri lunch + (Sat lunch if 4 servings)
+  const batchBlocks=[
+    {cook:'mon-dinner', leftovers:['tue-lunch','wed-lunch','thu-lunch','fri-lunch']},
+    {cook:'wed-dinner', leftovers:['thu-lunch','fri-lunch','sat-lunch','sun-lunch']},
+  ];
+  const batchArr=[...SEL.batches];
+  batchArr.slice(0,2).forEach((id,bi)=>{
+    const servings=getMealServings(id);
+    const block=batchBlocks[bi];
+    if(!slots[block.cook])slots[block.cook]=id;
+    let leftoversNeeded=servings-1;
+    for(const ls of block.leftovers){
+      if(leftoversNeeded<=0)break;
+      if(!slots[ls]){slots[ls]=id;leftoversNeeded--;}
+    }
+  });
+
+  // FRESH MEALS — expand counts, prefer dinner slots, then remaining lunch slots
+  // Dinner slot priority: Tue, Thu, Fri, Sat, Sun, Mon — avoids batch cook nights
+  const dinnerOrder=['tue-dinner','thu-dinner','fri-dinner','sat-dinner','sun-dinner','mon-dinner','wed-dinner'];
+  const lunchOrder=['mon-lunch','tue-lunch','wed-lunch','thu-lunch','fri-lunch','sat-lunch','sun-lunch'];
+  let dIdx=0,lIdx=0;
+
+  // Build fresh meal list sorted: multi-serve first, then single
+  const freshEntries=Object.entries(SEL.fresh)
+    .filter(([id])=>!isBatchMeal(id))
+    .sort(([a],[b])=>(getMealServings(b)||1)-(getMealServings(a)||1));
+
+  freshEntries.forEach(([id,cnt])=>{
+    const servings=getMealServings(id);
+    let total=servings*cnt;
+    while(total>0){
+      // Advance past taken dinner slots
+      while(dIdx<dinnerOrder.length&&slots[dinnerOrder[dIdx]])dIdx++;
+      if(dIdx<dinnerOrder.length){
+        slots[dinnerOrder[dIdx]]=id;dIdx++;total--;
+      } else {
+        // Fall back to lunch slots
+        while(lIdx<lunchOrder.length&&slots[lunchOrder[lIdx]])lIdx++;
+        if(lIdx<lunchOrder.length){
+          slots[lunchOrder[lIdx]]=id;lIdx++;total--;
+        } else break;
+      }
+    }
+  });
+
+  return slots;
+}
+
+// Determine which slots are batch cook nights vs leftovers
+// (batch meal in dinner slot = cook night; in lunch slot = leftover)
+function isCookNight(slotKey,mealId){
+  if(!isBatchMeal(mealId))return false;
+  return slotKey.includes('-dinner');
+}
+function isLeftover(slotKey,mealId){
+  if(!isBatchMeal(mealId))return false;
+  return slotKey.includes('-lunch');
+}
+
+/* ── GROCERY BUILD ────────────────────────────────────────────── */
+function buildGrocery(){
+  const needs={};const freeIngs=[];
+  DAYS.forEach(day=>SLOTS.forEach(slot=>{
+    const id=PLAN.slots[lk(day,slot)];if(!id)return;
+    const m=findMeal(id);if(!m)return;
+    (m.ings||[]).forEach(({id:iid,s:sv})=>{if(ING[iid])needs[iid]=(needs[iid]||0)+sv;});
+    if(m.freeIngs)m.freeIngs.split(',').map(s=>s.trim()).filter(Boolean)
+      .forEach(fi=>{if(!freeIngs.includes(fi))freeIngs.push(fi);});
+  }));
+  // Deduplicate: batch leftovers use same ingredient as cook night — already counted by serving
+  // The algorithm places same id multiple times (leftovers) but ings are per-serving, so
+  // we need to count ingredient needs based on unique cook events, not servings.
+  // Fix: count ingredients only once per unique batch meal cook event.
+  const batchCounted=new Set();
+  DAYS.forEach(day=>['lunch','dinner'].forEach(slot=>{
+    const id=PLAN.slots[lk(day,slot)];if(!id||!isBatchMeal(id))return;
+    if(isCookNight(lk(day,slot),id)&&!batchCounted.has(id)){
+      batchCounted.add(id);
+      // Re-count for this batch meal properly (one cook = full ingredient purchase)
+      // Already counted above; no double-remove needed since ings are per-serving
+      // and batches show ings once total (their ings represent one full cook)
+    }
+  }));
+  // For batch meals: count ingredients based on number of batches selected, not servings placed
+  // Reset batch ingredient counts and recount by batch selection
+  SEL.batches.forEach(id=>{
+    const m=findMeal(id);if(!m)return;
+    (m.ings||[]).forEach(({id:iid,s:sv})=>{
+      // Remove the over-count from placement (placed servings times)
+      // Already counted servings times in the loop above — subtract extras
+      const servings=m.servings||1;
+      if(ING[iid])needs[iid]=Math.max(0,(needs[iid]||0)-(sv*(servings-1)));
+    });
+  });
+  const cats={proteins:[],frozen:[],produce:[],dairy:[],pantry:[],supplements:[]};
+  Object.entries(needs).forEach(([id,sv])=>{
+    const ing=ING[id];if(!ing||sv<=0)return;
+    const units=Math.ceil(sv/ing.spu);
+    (cats[ing.cat]=cats[ing.cat]||[]).push({id,name:ing.name,units,ul:ing.ul,staple:!!ing.staple});
+  });
+  return{cats,freeIngs};
+}
+
+/* ── WEEK RESET ───────────────────────────────────────────────── */
+function startFreshWeek(){
+  SEL={breakfasts:new Set(),snacks:new Set(),batches:new Set(),fresh:{}};
+  PLAN={weekOf:getMondayStr(),slots:{},generated:false};
+  TRACK={logged:{},custom:{}};CHECKED={};
+  document.getElementById('nwmodal').classList.add('hidden');
+  save();showTab('plan');
+  showToast('Fresh week — pick your meals! 🥗');
+}
+function keepExisting(){
+  // Update weekOf so the modal doesn't fire again this week
+  PLAN.weekOf=getMondayStr();
+  // Always clear tracking on new week — last week's logged meals shouldn't carry over
+  TRACK={logged:{},custom:{}};
+  // Clear grocery checked state — new week, new shopping trip
+  CHECKED={};
+  save();
+  document.getElementById('nwmodal').classList.add('hidden');
+  showTab(UI.tab);
+}
+function checkNewWeek(){
+  const mon=getMondayStr();
+  // First use — set weekOf silently, no prompt needed
+  if(!PLAN.weekOf){PLAN.weekOf=mon;save();return;}
+  // Same week — nothing to do
+  if(PLAN.weekOf===mon)return;
+  // New week detected — ALWAYS show the modal, regardless of what day it is.
+  // Previously only fired on Mondays, which meant users who opened mid-week
+  // would silently carry over stale data with no chance to reset.
+  document.getElementById('nwmodal').classList.remove('hidden');
+}
+
+/* ── TAB NAVIGATION ───────────────────────────────────────────── */
+function showTab(t){
+  UI.tab=t;
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
+  document.querySelectorAll('.mtab').forEach(b=>b.classList.remove('on'));
+  document.getElementById('view-'+t).classList.add('on');
+  document.getElementById('mt-'+t).classList.add('on');
+  if(t==='plan')   renderPlan();
+  if(t==='today')  renderToday();
+  if(t==='grocery')renderGrocery();
+  save();
+}
+
+/* ── PLAN TAB ─────────────────────────────────────────────────── */
+function renderPlan(){
+  const mon=new Date(getMondayStr());
+  const wLabel=`Week of ${mon.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`;
+  document.getElementById('week-chip').textContent=wLabel;
+
+  if(PLAN.generated){
+    renderWeekView();
+  } else {
+    renderWizard();
+  }
+}
+
+/* ── WIZARD ───────────────────────────────────────────────────── */
+function renderWizard(){
+  const bfMax=2,skMax=2,batchMax=2;
+  const total=totalMainSlots();
+  const rem=Math.max(0,TOTAL_MAIN_SLOTS-total);
+  const meterPct=Math.min(Math.round(total/TOTAL_MAIN_SLOTS*100),100);
+  const canGenerate=SEL.breakfasts.size>0&&SEL.snacks.size>0&&total>=8;
+  const meterFull=total>=TOTAL_MAIN_SLOTS;
+
+  // Library meals of type fresh
+  const libFreshMeals=LIBRARY.filter(m=>m.mealType!=='breakfast'&&m.mealType!=='snack');
+
+  let html=`
+    <div class="wizard-title">Plan your week</div>
+    <div class="wizard-intro">Pick what you want to eat — the app handles the scheduling. Batch meals cook once and feed you multiple days.</div>
+
+    <!-- SLOT METER -->
+    <div class="slot-meter">
+      <div class="sm-row">
+        <div class="sm-label">Lunch + dinner slots covered</div>
+        <div class="sm-count">${total}/${TOTAL_MAIN_SLOTS}</div>
+      </div>
+      <div class="sm-bar"><div class="sm-fill ${meterFull?'full':''}" style="width:${meterPct}%"></div></div>
+      <div class="sm-note">${meterFull?'Full week covered — ready to generate!':rem>0?`${rem} more meal slots to fill`:''}</div>
+    </div>
+
+    <!-- BREAKFASTS -->
+    <div class="wizard-section">
+      <div class="sec-hdr">Breakfasts</div>
+      <div class="sec-sub">Pick 1 or 2 — they repeat through the week.</div>
+      <div class="tog-grid">
+        ${BREAKFASTS.map(m=>{
+          const on=SEL.breakfasts.has(m.id);
+          const maxed=SEL.breakfasts.size>=bfMax&&!on;
+          return`<div class="tog-card ${on?'on':''} ${maxed?'maxed':''}" onclick="toggleBreakfast('${m.id}')">
+            <div class="tog-check">${on?`<svg width="12" height="10" viewBox="0 0 12 10"><polyline points="1,5 4,8 11,1" stroke="#000" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`:''}</div>
+            <div class="tog-name">${m.name}</div>
+            <div class="tog-cal">~${m.cal} cal · ~${m.pro}g protein</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <!-- SNACKS -->
+    <div class="wizard-section">
+      <div class="sec-hdr">Snacks</div>
+      <div class="sec-sub">Pick 1 or 2 — they repeat through the week.</div>
+      <div class="tog-grid">
+        ${SNACKS.map(m=>{
+          const on=SEL.snacks.has(m.id);
+          const maxed=SEL.snacks.size>=skMax&&!on;
+          return`<div class="tog-card ${on?'on':''} ${maxed?'maxed':''}" onclick="toggleSnack('${m.id}')">
+            <div class="tog-check">${on?`<svg width="12" height="10" viewBox="0 0 12 10"><polyline points="1,5 4,8 11,1" stroke="#000" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`:''}</div>
+            <div class="tog-name">${m.name}</div>
+            <div class="tog-cal">~${m.cal} cal · ~${m.pro}g protein</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <!-- BATCH COOKS -->
+    <div class="wizard-section">
+      <div class="sec-hdr">Batch cooks</div>
+      <div class="sec-sub">Pick up to 2. You'll cook these Monday and Wednesday nights. Each batch feeds multiple days — covering most of your lunches automatically.</div>
+      <div class="batch-list">
+        ${BATCH_MEALS.map(m=>{
+          const on=SEL.batches.has(m.id);
+          const maxed=SEL.batches.size>=batchMax&&!on;
+          return`<div class="batch-card ${on?'on':''} ${maxed?'maxed':''}" onclick="toggleBatch('${m.id}')">
+            <div class="bc-icon">🍳</div>
+            <div class="bc-body">
+              <div class="bc-name">${m.name}</div>
+              <div class="bc-meta">~${m.cal} cal · ~${m.pro}g protein per serving</div>
+              <div class="bc-feeds">Feeds ${m.servings} meals (${m.servings-1} lunch leftovers + 1 dinner)</div>
+            </div>
+            <div class="bc-check">${on?`<svg width="12" height="10" viewBox="0 0 12 10"><polyline points="1,5 4,8 11,1" stroke="#000" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`:''}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <!-- FRESH MEALS -->
+    <div class="wizard-section">
+      <div class="sec-hdr">Fresh dinners + extras</div>
+      <div class="sec-sub">Add meals to fill your remaining ${rem} slots. Each shows how many meal sittings it covers. Good for dinners and Monday lunch.</div>
+      <div class="fresh-list">
+        ${[...FRESH_MEALS,...libFreshMeals].map(m=>{
+          const cnt=SEL.fresh[m.id]||0;
+          const slotsCovered=(m.servings||1)*cnt;
+          const maxedOut=meterFull&&cnt===0;
+          const isLib=isLibMeal(m.id);
+          return`<div class="fresh-card ${cnt>0?'has-count':''}" style="${maxedOut?'opacity:.4':''}" id="fc-${m.id}">
+            <div class="fc-body">
+              ${isLib?makeTags(['custom']):''}
+              ${(m.tags||[]).includes('skin')?makeTags(['skin']):''}
+              <div class="fc-name">${m.name}</div>
+              <div class="fc-meta">~${m.cal} cal · ~${m.pro||0}g protein · covers ${m.servings||1} meal${(m.servings||1)>1?'s':''}</div>
+            </div>
+            <div class="fc-counter">
+              <button class="cnt-btn ${cnt===0?'disabled':''}" onclick="adjFresh('${m.id}',-1)">−</button>
+              <div class="cnt-val ${cnt>0?'nonzero':''}">${cnt}</div>
+              <button class="cnt-btn ${maxedOut?'disabled':''}" onclick="adjFresh('${m.id}',1)">+</button>
+              ${isLib?`<button onclick="deleteLibMeal('${m.id}')" style="background:none;color:#444;font-size:18px;padding:0 4px;line-height:1;margin-left:4px" title="Remove from library">×</button>`:''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <!-- GENERATE -->
+    <div class="gen-section">
+      <button class="gen-btn" ${canGenerate?'':'disabled'} onclick="handleGenerate()">Generate my week →</button>
+      <div class="gen-sub">${canGenerate?`Covering ${total} of 14 lunch & dinner slots`:'Pick at least 1 breakfast, 1 snack, and 8+ meal slots to generate'}</div>
+    </div>`;
+
+  document.getElementById('plan-content').innerHTML=html;
+}
+
+/* ── WIZARD ACTIONS ───────────────────────────────────────────── */
+function toggleBreakfast(id){
+  if(SEL.breakfasts.has(id))SEL.breakfasts.delete(id);
+  else if(SEL.breakfasts.size<2)SEL.breakfasts.add(id);
+  save();renderWizard();
+}
+function toggleSnack(id){
+  if(SEL.snacks.has(id))SEL.snacks.delete(id);
+  else if(SEL.snacks.size<2)SEL.snacks.add(id);
+  save();renderWizard();
+}
+function toggleBatch(id){
+  if(SEL.batches.has(id))SEL.batches.delete(id);
+  else if(SEL.batches.size<2)SEL.batches.add(id);
+  save();renderWizard();
+}
+function adjFresh(id,delta){
+  const current=SEL.fresh[id]||0;
+  const next=Math.max(0,current+delta);
+  if(delta>0){
+    // Check if adding this would exceed 14 slots
+    const mealServings=getMealServings(id);
+    if(totalMainSlots()+mealServings>TOTAL_MAIN_SLOTS+2)return; // small buffer
+  }
+  if(next===0)delete SEL.fresh[id];
+  else SEL.fresh[id]=next;
+  save();renderWizard();
+}
+function handleGenerate(){
+  const slots=generateWeek();
+  PLAN.slots=slots;PLAN.generated=true;PLAN.weekOf=getMondayStr();
+  save();renderWeekView();
+}
+
+/* ── WEEK VIEW ────────────────────────────────────────────────── */
+function renderWeekView(){
+  const dates=getWeekDates();
+  const todayKey=getTodayKey();
+  const todayIdx=DAYS.indexOf(todayKey);
+
+  let html=`<div class="wv-hdr">
+    <div class="wv-title">This week's plan</div>
+    <div style="display:flex;gap:8px">
+      <button class="replan-btn" onclick="handleReplan()">Re-plan</button>
+      <button class="replan-btn" onclick="handleNewWeek()" style="border-color:#5ec46a40;color:#5ec46a">New week</button>
+    </div>
+  </div>`;
+
+  DAYS.forEach((day,i)=>{
+    const isToday=day===todayKey;
+    const isPast=isPastDay(day);
+    const isWeekend=isWeekendDay(day);
+    const dayIdx=DAYS.indexOf(day);
+
+    // Cook banner: only show for today and future days — past cook nights are irrelevant
+    const dinnerSlot=PLAN.slots[lk(day,'dinner')];
+    const isCookNightDay=dinnerSlot&&isBatchMeal(dinnerSlot)&&dayIdx>=todayIdx;
+    const cookMeal=isCookNightDay?findMeal(dinnerSlot):null;
+
+    html+=`<div class="day-card ${isToday?'is-today':''} ${isPast?'is-past':''} ${isWeekend?'is-weekend':''}">
+      <div class="day-hdr">
+        <div class="day-name">${DLONG[day]}</div>
+        <div class="day-pills">
+          ${isToday?`<span class="pill-today">Today</span>`:''}
+          <span class="pill-date">${dates[i]}</span>
+        </div>
+      </div>`;
+
+    if(isCookNightDay&&cookMeal){
+      html+=`<div class="cook-banner">
+        <div class="cook-icon">🍳</div>
+        <div>
+          <div class="cook-text">${isToday?'Cook tonight':'Cook this night'}: ${cookMeal.name}</div>
+          <div class="cook-sub">Makes ${cookMeal.servings} portions — tonight's dinner + ${cookMeal.servings-1} lunch leftover${cookMeal.servings-1>1?'s':''}</div>
+        </div>
+      </div>`;
+    }
+
+    html+=`<div class="day-slots">`;
+    SLOTS.forEach(slot=>{
+      const slotKey=lk(day,slot);
+      const id=PLAN.slots[slotKey];
+      const meal=findMeal(id);
+      const slotLbl=slot.charAt(0).toUpperCase()+slot.slice(1);
+      const isLeftoverSlot=id&&isLeftover(slotKey,id);
+      const isFlexible=!id&&isWeekend;
+
+      html+=`<div class="dslot" onclick="openPicker('${day}','${slot}')">
+        <div class="ds-type">${slotLbl}</div>
+        <div class="ds-meal ${meal?'has-meal':''} ${isLeftoverSlot?'leftover':''} ${!id&&!isFlexible?'empty':''} ${isFlexible?'flexible':''}">
+          ${meal?meal.name:isFlexible?'Flexible · eat out or repeat':'+  Add meal'}
+        </div>
+        ${isLeftoverSlot?`<div class="ds-badge dsb-leftover">Leftover</div>`:''}
+        ${meal&&(meal.tags||[]).includes('skin')?`<div class="ds-badge dsb-skin">Skin ✓</div>`:''}
+      </div>`;
+    });
+    html+=`</div></div>`;
+  });
+
+  document.getElementById('plan-content').innerHTML=html;
+}
+
+function handleReplan(){
+  PLAN.generated=false;
+  save();renderWizard();
+}
+
+// Manual new week trigger — same as if the app detected a new week naturally.
+// Clears everything and starts fresh without needing to wait for the automatic detection.
+function handleNewWeek(){
+  document.getElementById('nwmodal').classList.remove('hidden');
+}
+
+/* ── PICKER (override individual slots) ───────────────────────── */
+function openPicker(day,slot){
+  UI.picking={day,slot};
+  const slotLbl=slot.charAt(0).toUpperCase()+slot.slice(1);
+  document.getElementById('picker-title').textContent=`Change ${slotLbl}`;
+
+  const current=PLAN.slots[lk(day,slot)];
+  // Build appropriate options based on slot type
+  let options;
+  if(slot==='breakfast')options=BREAKFASTS;
+  else if(slot==='snack')options=SNACKS;
+  else options=[...BATCH_MEALS,...FRESH_MEALS,...LIBRARY.filter(m=>m.mealType!=='breakfast'&&m.mealType!=='snack')];
+
+  let html=options.map(m=>`
+    <div class="meal-opt ${m.id===current?'selected':''}" onclick="selectMeal('${m.id}')">
+      ${m.batch?makeTags(['batch']):''}${isLibMeal(m.id)?makeTags(['custom']):''}
+      ${(m.tags||[]).includes('skin')?makeTags(['skin']):''}
+      <div class="mo-name">${m.name}</div>
+      <div class="mo-macros">
+        <span class="mo-m">~${m.cal} cal</span>
+        <span class="mo-m">~${m.pro||0}g protein</span>
+        ${m.servings?`<span class="mo-m">${m.servings} serving${m.servings>1?'s':''}</span>`:''}
+      </div>
+      ${m.note?`<div class="mo-note">${m.note}</div>`:''}
+    </div>`).join('');
+
+  if(LIBRARY.length&&slot!=='breakfast'&&slot!=='snack'){
+    const libMeals=LIBRARY.filter(m=>m.mealType===slot);
+    if(libMeals.length){
+      html+=`<div class="picker-div">My library</div>`;
+      html+=libMeals.map(m=>`
+        <div class="meal-opt ${m.id===current?'selected':''}" onclick="selectMeal('${m.id}')">
+          ${makeTags(['custom'])}
+          <div class="mo-name">${m.name}</div>
+          <div class="mo-macros">
+            <span class="mo-m">~${m.cal} cal</span>
+            <span class="mo-m">~${m.pro||0}g protein</span>
+          </div>
+        </div>`).join('');
+    }
+  }
+
+  document.getElementById('picker-body').innerHTML=html;
+  document.getElementById('picker-foot').innerHTML=current
+    ?`<button onclick="clearSlot()" style="width:100%;background:none;border:1px solid #2a2a2a;color:#666;border-radius:10px;padding:12px;font-size:13px;font-weight:700">Remove this meal</button>`
+    :'';
+  document.getElementById('picker-ov').classList.remove('hidden');
+}
+function selectMeal(id){
+  if(!UI.picking)return;
+  const{day,slot}=UI.picking;
+  PLAN.slots[lk(day,slot)]=id;
+  delete TRACK.logged[lk(day,slot)];
+  save();closePicker();
+  if(UI.tab==='plan')renderWeekView();
+  else if(UI.tab==='today')renderToday();
+}
+function clearSlot(){
+  if(!UI.picking)return;
+  const{day,slot}=UI.picking;
+  delete PLAN.slots[lk(day,slot)];
+  delete TRACK.logged[lk(day,slot)];
+  save();closePicker();
+  if(UI.tab==='plan')renderWeekView();
+  else renderToday();
+}
+function closePicker(){document.getElementById('picker-ov').classList.add('hidden');UI.picking=null;}
+
+/* ── TODAY TAB ────────────────────────────────────────────────── */
+function renderToday(){
+  const day=getTodayKey();
+  const today=new Date();
+  const dateStr=today.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+  const conCal=consumedCal(day);
+  const conPro=consumedPro(day);
+  const pct=Math.min(Math.round(conCal/CAL_GOAL*100),100);
+  const proPct=Math.min(Math.round(conPro/PRO_GOAL*100),100);
+  const isOver=conCal>CAL_GOAL;
+  const loggedCount=SLOTS.filter(s=>isLogged(day,s)&&PLAN.slots[lk(day,s)]).length;
+  const plannedCount=SLOTS.filter(s=>PLAN.slots[lk(day,s)]).length;
+  const allDone=plannedCount>0&&loggedCount>=plannedCount;
+  const customs=getCustomItems(day);
+
+  let html=`<div class="today-hdr">
+    <div class="today-day">${DLONG[day]}</div>
+    <div class="today-sub">${dateStr}</div>
+  </div>`;
+
+  if(!PLAN.generated||plannedCount===0){
+    html+=`<div style="background:#141414;border:1px dashed #252525;border-radius:14px;padding:24px;text-align:center;color:#555;font-size:14px;line-height:1.8;margin-bottom:16px">
+      No meals planned for today.<br>Go to <strong style="color:#777">Plan</strong> to set up your week.
+    </div>`;
+  }
+
+  html+=`<div class="cal-card">
+    <div class="cc-top">
+      <div>
+        <div class="cc-num" style="color:${isOver?'#e8a838':'#fff'}">${conCal.toLocaleString()}</div>
+        <div class="cc-goal">of ${CAL_GOAL.toLocaleString()} cal goal</div>
+      </div>
+      <div class="cc-pct" style="color:${isOver?'#e8a838':'#5ec46a'}">${pct}%</div>
+    </div>
+    <div class="prog"><div class="prog-fill ${isOver?'over':''}" style="width:${pct}%"></div></div>
+    <div class="cc-pro">Protein: <span>${conPro}g</span> / ${PRO_GOAL}g · ${proPct}%</div>
+    ${isOver?`<div class="cc-over-note">Over by ${(conCal-CAL_GOAL).toLocaleString()} cal — fine on heavy training days</div>`:''}
+  </div>`;
+
+  if(allDone&&loggedCount>0){
+    html+=`<div class="complete-card">
+      <div class="cc-icon">💪</div>
+      <div><div class="cc-msg">Day complete!</div>
+      <div class="cc-sub">${loggedCount} meals · ${conCal.toLocaleString()} cal · ${conPro}g protein</div></div>
+    </div>`;
+  }
+
+  html+=`<div class="sec-label">Today's planned meals</div>`;
+  SLOTS.forEach(slot=>{
+    const id=PLAN.slots[lk(day,slot)];
+    const meal=findMeal(id);
+    const logged=isLogged(day,slot);
+    const slotLbl=slot.charAt(0).toUpperCase()+slot.slice(1);
+    const isLO=id&&isLeftover(lk(day,slot),id);
+    html+=`<div class="tmeal ${logged?'logged':''} ${!meal?'no-meal':''}" onclick="${meal?`toggleLog('${day}','${slot}')`:''}" style="${meal?'cursor:pointer':''}">
+      <div class="tm-box ${logged?'done':''}" onclick="${meal?`event.stopPropagation();toggleLog('${day}','${slot}')`:''}" style="${meal?'cursor:pointer':'cursor:default'}">
+        ${logged?`<svg width="12" height="10" viewBox="0 0 12 10"><polyline points="1,5 4,8 11,1" stroke="#000" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`:''}
+      </div>
+      <div class="tm-body">
+        <div class="tm-type">${slotLbl}${isLO?' · Leftover':''}</div>
+        <div class="tm-name ${!meal?'empty':''}">${meal?meal.name:'Not planned'}</div>
+        ${meal?`<div class="tm-cal ${logged?'logged':''}">${logged?'✓ ':''}~${meal.cal} cal · ~${meal.pro||0}g protein</div>`:''}
+      </div>
+    </div>`;
+  });
+
+  // Custom items
+  html+=`<div class="sec-label" style="margin-top:16px">Additional items</div>`;
+  if(!customs.length){
+    html+=`<div style="font-size:12px;color:#555;margin-bottom:8px">Extra snacks, drinks, anything else you ate today…</div>`;
+  } else {
+    customs.forEach(ci=>{
+      html+=`<div class="citem">
+        <div class="ci-name">${ci.name}</div>
+        <div class="ci-cal">${ci.cal} cal${ci.pro?` · ${ci.pro}g protein`:''}</div>
+        <button class="ci-del" onclick="deleteCustomItem('${day}','${ci.id}')">×</button>
+      </div>`;
+    });
+  }
+  html+=`<button class="add-btn" onclick="openAddItem()">+ Add item</button>`;
+
+  if(UI.pendingSave){
+    html+=`<div class="save-banner">
+      <div class="sb-text">Save "<strong>${UI.pendingSave.name}</strong>" to your meal library for future weeks?</div>
+      <button class="sb-yes" onclick="openSaveLib()">Save →</button>
+      <button class="sb-no" onclick="UI.pendingSave=null;renderToday()">Skip</button>
+    </div>`;
+  }
+
+  document.getElementById('today-content').innerHTML=html;
+}
+
+function toggleLog(day,slot){
+  if(!PLAN.slots[lk(day,slot)])return;
+  const k=lk(day,slot);
+  if(TRACK.logged[k])delete TRACK.logged[k];
+  else TRACK.logged[k]=true;
+  save();renderToday();
+}
+
+/* ── CUSTOM ITEM FLOW ─────────────────────────────────────────── */
+function openAddItem(){
+  ['ci-name','ci-cal','ci-pro'].forEach(id=>{
+    const el=document.getElementById(id);el.value='';el.classList.remove('err');
+  });
+  document.getElementById('additem-ov').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('ci-name').focus(),350);
+}
+function closeAddItem(){document.getElementById('additem-ov').classList.add('hidden');}
+function logCustomItem(){
+  const name=document.getElementById('ci-name').value.trim();
+  const cal=parseInt(document.getElementById('ci-cal').value)||0;
+  const pro=parseInt(document.getElementById('ci-pro').value)||0;
+  let ok=true;
+  if(!name){document.getElementById('ci-name').classList.add('err');ok=false;}
+  if(cal<=0){document.getElementById('ci-cal').classList.add('err');ok=false;}
+  if(!ok)return;
+  const day=getTodayKey();
+  if(!TRACK.custom[day])TRACK.custom[day]=[];
+  TRACK.custom[day].push({id:'ci_'+Date.now(),name,cal,pro:pro||0});
+  UI.pendingSave={name,cal,pro:pro||0};
+  save();closeAddItem();renderToday();
+  showToast(`Logged: ${name} · ${cal} cal`);
+}
+function deleteCustomItem(day,id){
+  if(!TRACK.custom[day])return;
+  TRACK.custom[day]=TRACK.custom[day].filter(c=>c.id!==id);
+  save();renderToday();
+}
+
+/* ── SAVE TO LIBRARY ─────────────────────────────────────────── */
+function openSaveLib(){
+  if(!UI.pendingSave)return;
+  const{name,cal,pro}=UI.pendingSave;
+  UI.libType='dinner';UI.libServings=1;UI.libChips=new Set();
+  document.getElementById('lib-preview').innerHTML=`
+    <div style="font-size:15px;font-weight:700;margin-bottom:4px">${name}</div>
+    <div style="font-size:12px;color:#777">~${cal} cal · ~${pro||0}g protein</div>`;
+  document.getElementById('lib-type-row').innerHTML=
+    ['breakfast','lunch','snack','dinner'].map(t=>
+      `<button class="type-btn ${t===UI.libType?'on':''}" onclick="setLibType('${t}')">${t.charAt(0).toUpperCase()+t.slice(1)}</button>`
+    ).join('');
+  document.getElementById('lib-serv-row').innerHTML=
+    [1,2,3,4].map(n=>
+      `<button class="serv-btn ${n===UI.libServings?'on':''}" onclick="setLibServ(${n})">${n} serving${n>1?'s':''}</button>`
+    ).join('');
+  renderLibChips();
+  document.getElementById('lib-free').value='';
+  document.getElementById('savelib-ov').classList.remove('hidden');
+}
+function setLibType(t){
+  UI.libType=t;
+  document.querySelectorAll('#lib-type-row .type-btn').forEach(b=>{
+    b.classList.toggle('on',b.textContent.toLowerCase()===t);
+  });
+}
+function setLibServ(n){
+  UI.libServings=n;
+  document.querySelectorAll('#lib-serv-row .serv-btn').forEach((b,i)=>{
+    b.classList.toggle('on',i+1===n);
+  });
+}
+function renderLibChips(){
+  document.getElementById('lib-chips').innerHTML=
+    QUICK_ING_IDS.map(id=>
+      `<div class="ing-chip ${UI.libChips.has(id)?'on':''}" onclick="toggleChip('${id}')">${ING[id].name}</div>`
+    ).join('');
+}
+function toggleChip(id){
+  if(UI.libChips.has(id))UI.libChips.delete(id);else UI.libChips.add(id);
+  renderLibChips();
+}
+function saveToLibrary(){
+  if(!UI.pendingSave)return;
+  const{name,cal,pro}=UI.pendingSave;
+  const freeIng=document.getElementById('lib-free').value.trim();
+  LIBRARY.push({
+    id:'lib_'+Date.now()+'_'+Math.random().toString(36).substr(2,4),
+    name,cal,pro:pro||0,
+    mealType:UI.libType,
+    servings:UI.libServings,
+    ings:[...UI.libChips].map(id=>({id,s:1})),
+    freeIngs:freeIng,
+  });
+  UI.pendingSave=null;UI.libChips=new Set();
+  save();closeSaveLib();renderToday();
+  showToast(`Saved to library 📚`);
+}
+function closeSaveLib(){document.getElementById('savelib-ov').classList.add('hidden');UI.pendingSave=null;}
+
+/* ── GROCERY TAB ─────────────────────────────────────────────── */
+function renderGrocery(){
+  const{cats,freeIngs}=buildGrocery();
+  const catOrder=['proteins','frozen','produce','dairy','pantry','supplements'];
+  const catLabels={proteins:'Proteins & Eggs',frozen:'Frozen',produce:'Produce',dairy:'Dairy & Fridge',pantry:'Pantry',supplements:'Supplements'};
+  const planned=DAYS.filter(d=>SLOTS.some(s=>PLAN.slots[lk(d,s)])).length;
+  const hasItems=catOrder.some(c=>cats[c]&&cats[c].length)||freeIngs.length>0;
+
+  let html=`<div class="groc-top">
+    <div>
+      <div class="gt-title">${planned>0?`${planned}/7 days planned`:'No meals planned yet'}</div>
+      <div class="gt-sub">Shopping list for the week</div>
+    </div>
+    ${hasItems?`<button class="copy-btn" onclick="copyList()">Copy ↗</button>`:''}
+  </div>`;
+
+  if(!hasItems){
+    html+=`<div class="groc-empty">Plan your week first.<br>Your shopping list builds automatically.</div>`;
+  } else {
+    catOrder.forEach(cat=>{
+      const items=cats[cat];if(!items||!items.length)return;
+      html+=`<div style="margin-bottom:16px"><div class="cat-label">${catLabels[cat]}</div>`;
+      items.sort((a,b)=>a.name.localeCompare(b.name)).forEach(item=>{
+        const ck=!!CHECKED[item.id];
+        html+=`<div class="gitem ${ck?'checked':''}">
+          <div class="g-box ${ck?'done':''}" onclick="toggleCheck('${item.id}')">
+            ${ck?`<svg width="12" height="9" viewBox="0 0 12 9"><polyline points="1,4.5 4,7.5 11,1" stroke="#000" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`:''}
+          </div>
+          <div class="g-name">${item.name}</div>
+          ${item.staple?`<div class="g-staple">check stock</div>`:`<div class="g-qty">${item.units} ${item.ul}</div>`}
+        </div>`;
+      });
+      html+=`</div>`;
+    });
+    if(freeIngs.length){
+      html+=`<div style="margin-bottom:16px"><div class="cat-label">Other ingredients</div>`;
+      freeIngs.forEach(fi=>{
+        const k='free_'+fi.replace(/[^\w]/g,'');
+        const ck=!!CHECKED[k];
+        html+=`<div class="gitem ${ck?'checked':''}">
+          <div class="g-box ${ck?'done':''}" onclick="toggleCheck('${k}')">
+            ${ck?`<svg width="12" height="9" viewBox="0 0 12 9"><polyline points="1,4.5 4,7.5 11,1" stroke="#000" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`:''}
+          </div>
+          <div class="g-name">${fi}</div>
+          <div class="g-qty">as needed</div>
+        </div>`;
+      });
+      html+=`</div>`;
+    }
+    html+=`<div style="text-align:center;margin-top:4px">
+      <button onclick="resetChecks()" style="background:none;border:1px solid #1e1e1e;color:#555;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700">Uncheck all</button>
+    </div>`;
+  }
+  document.getElementById('grocery-content').innerHTML=html;
+}
+function toggleCheck(id){
+  if(CHECKED[id])delete CHECKED[id];else CHECKED[id]=true;
+  save();renderGrocery();
+}
+function resetChecks(){CHECKED={};save();renderGrocery();}
+function copyList(){
+  const{cats,freeIngs}=buildGrocery();
+  const order=['proteins','frozen','produce','dairy','pantry','supplements'];
+  const lbls={proteins:'PROTEINS',frozen:'FROZEN',produce:'PRODUCE',dairy:'DAIRY',pantry:'PANTRY',supplements:'SUPPLEMENTS'};
+  const mon=new Date(getMondayStr()).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  let txt=`Grocery List — Week of ${mon}\n\n`;
+  order.forEach(cat=>{
+    const items=cats[cat];if(!items||!items.length)return;
+    txt+=lbls[cat]+"\n";
+    items.forEach(i=>txt+=`☐ ${i.name}${i.staple?' — check stock':` — ${i.units} ${i.ul}`}\n`);
+    txt+="\n";
+  });
+  if(freeIngs.length){txt+="OTHER INGREDIENTS\n";freeIngs.forEach(fi=>txt+=`☐ ${fi}\n`);}
+  navigator.clipboard.writeText(txt)
+    .then(()=>showToast('List copied ✓'))
+    .catch(()=>showToast('Copy failed'));
+}
+
+/* ── UTILS ────────────────────────────────────────────────────── */
+// ovBg closes the overlay when tapping the dark backdrop (not the sheet itself).
+// Optional callback runs when dismissed — used by nwmodal to call keepExisting.
+function ovBg(e,id,callback){
+  if(e.target===e.currentTarget){
+    document.getElementById(id).classList.add('hidden');
+    if(callback)callback();
+  }
+}
+
+// Delete a meal from the user's library.
+// Also removes it from current wizard selections so slot count stays accurate.
+function deleteLibMeal(id){
+  LIBRARY=LIBRARY.filter(m=>m.id!==id);
+  delete SEL.fresh[id];
+  // Also clear from any generated plan slots
+  Object.keys(PLAN.slots).forEach(k=>{if(PLAN.slots[k]===id)delete PLAN.slots[k];});
+  save();renderWizard();
+}
+function showToast(msg){
+  let t=document.getElementById('_toast');
+  if(!t){
+    t=document.createElement('div');t.id='_toast';
+    t.style.cssText='position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#2a2a2a;color:#ddd;padding:10px 18px;border-radius:20px;font-size:13px;font-weight:600;z-index:999;pointer-events:none;opacity:0;transition:opacity .3s;white-space:nowrap;border:1px solid #3a3a3a';
+    document.body.appendChild(t);
+  }
+  t.textContent=msg;t.style.opacity='1';
+  clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity='0',2600);
+}
+
+/* ── HOME SCREEN ICON ─────────────────────────────────────────── */
+(function(){
+  try{
+    var c=document.createElement('canvas');c.width=c.height=180;
+    var x=c.getContext('2d');
+    x.fillStyle='#0d0d0d';x.fillRect(0,0,180,180);
+    x.fillStyle='#5ec46a';x.fillRect(0,140,180,40);
+    x.font='86px serif';x.textAlign='center';x.textBaseline='middle';
+    x.fillText('🥗',90,78);
+    x.fillStyle='#000';x.font='bold 14px -apple-system,Arial';
+    x.textBaseline='middle';x.fillText('MEAL PLAN',90,161);
+    var l=document.createElement('link');l.rel='apple-touch-icon';l.href=c.toDataURL();
+    document.head.appendChild(l);
+  }catch(e){}
+})();
+
+/* ── INIT ─────────────────────────────────────────────────────── */
+load();
+checkNewWeek();
+// Default to plan tab wizard if nothing generated yet
+if(!PLAN.generated)UI.tab='plan';
+showTab(UI.tab||'plan');
+</script>
+</body>
+</html>
